@@ -5,7 +5,7 @@ import dataloader
 import model
 import world
 
-# 默认 lastfm
+#  lastfm
 if world.dataset in ['lastfm', 'ciao', 'epinions', 'douban', 'gowalla']:
     # PSR
     if world.model_name in ['PSR']:
