@@ -50,27 +50,27 @@ class LightGCN(nn.Module):
         self._init_weight()
 
     def _init_weight(self):
-        self.num_users = self.dataset.n_users  # user数
-        self.num_items = self.dataset.m_items  # item数
+        self.num_users = self.dataset.n_users  # user
+        self.num_items = self.dataset.m_items  # item
         # self.beta = nn.Parameter(torch.tensor([1.0]), requires_grad=True)
-        self.latent_dim = self.config['latent_dim_rec']   # 默认64维
-        self.n_layers = self.config['layer']   # 默认层数为3
+        self.latent_dim = self.config['latent_dim_rec']   # 64
+        self.n_layers = self.config['layer']   # 3
         self.embedding_user = torch.nn.Embedding(    # user embedding
             num_embeddings=self.num_users, embedding_dim=self.latent_dim)
         self.embedding_item = torch.nn.Embedding(    # item embedding
             num_embeddings=self.num_items, embedding_dim=self.latent_dim)
 
-        nn.init.normal_(self.embedding_user.weight, std=0.1)  # 权重初始化为标准正态分布， 方差为0.1
-        nn.init.normal_(self.embedding_item.weight, std=0.1)  # 权重初始化为标准正态分布， 方差为0.1
-        '''嵌入单位向量化'''
+        nn.init.normal_(self.embedding_user.weight, std=0.1)  
+        nn.init.normal_(self.embedding_item.weight, std=0.1)  
+        '''1'''
         # self.embedding_user.weight = F.normalize(self.embedding_user.weight,p=2,dim=1)
         # self.embedding_item.weight = F.normalize(self.embedding_item.weight,p=2,dim=1)
 
         self.f = nn.Sigmoid()
-        self.interactionGraph = self.dataset.getInteractionGraph() # 获得item*user卷积核
+        self.interactionGraph = self.dataset.getInteractionGraph()
         print(f"{world.model_name} is already to go")
 
-    # 模型： 卷积核^3 * embedding  最终返回的是各层(含输入层)users和items嵌入的均值
+    
     # def computer(self):
     #     """
     #     propagate methods for lightGCN
@@ -83,35 +83,35 @@ class LightGCN(nn.Module):
     #     G = self.interactionGraph
     #
     #     for layer in range(self.n_layers):
-    #         all_emb = torch.sparse.mm(G, all_emb)   # 卷积核 * embedding
+    #         all_emb = torch.sparse.mm(G, all_emb)  
     #         embs.append(all_emb)
     #     embs = torch.stack(embs, dim=1)
     #     # print(embs.size())
-    #     light_out = torch.mean(embs, dim=1)         # 获得各层(包括输入层)嵌入均值
-    #     # 拆分成users和items的嵌入
+    #     light_out = torch.mean(embs, dim=1)       
+    #     
     #     users, items = torch.split(light_out, [self.num_users, self.num_items])
     #     self.final_user, self.final_item = users, items
     #     return users, items
 
-    # 获得指定user和所有items之间的分数
+  
     def getUsersRating(self, users):
         all_users, all_items = self.final_user, self.final_item
         users_emb = all_users[users.long()]
         items_emb = all_items
         rating = self.f(torch.matmul(users_emb, items_emb.t()))
         return rating
-    # 获得user, pos item, neg item的输入输出嵌入
+  
     def getEmbedding(self, users, pos_items, neg_items):
         all_users, all_items = self.computer()
-        users_emb = all_users[users]    # 指定user嵌入
-        pos_emb = all_items[pos_items]  # pos item嵌入
-        neg_emb = all_items[neg_items]  # neg item嵌入
-        users_emb_ego = self.embedding_user(users)  # 原始user嵌入
-        pos_emb_ego = self.embedding_item(pos_items)# 原始pos item嵌入
-        neg_emb_ego = self.embedding_item(neg_items)# 原始neg item嵌入
+        users_emb = all_users[users]    # user
+        pos_emb = all_items[pos_items]  # pos item
+        neg_emb = all_items[neg_items]  # neg item
+        users_emb_ego = self.embedding_user(users)  # user
+        pos_emb_ego = self.embedding_item(pos_items)# pos item
+        neg_emb_ego = self.embedding_item(neg_items)# neg item
         return users_emb, pos_emb, neg_emb, users_emb_ego, pos_emb_ego, neg_emb_ego
 
-    # 返回lightGCN的损失loss和原始损失(E0^2)
+ 
     def bpr_loss(self, users, pos, neg):
         (users_emb, pos_emb, neg_emb,
          userEmb0, posEmb0, negEmb0) = self.getEmbedding(users.long(), pos.long(), neg.long())
@@ -119,8 +119,8 @@ class LightGCN(nn.Module):
         reg_loss = (1 / 2) * (userEmb0.norm(2).pow(2) +
                               posEmb0.norm(2).pow(2) +
                               negEmb0.norm(2).pow(2)) / float(len(users))
-        # 计算user和正负样本的分数
-        pos_scores = torch.mul(users_emb, pos_emb) # 逐元素相乘
+        
+        pos_scores = torch.mul(users_emb, pos_emb) 
         pos_scores = torch.sum(pos_scores, dim=1)
         neg_scores = torch.mul(users_emb, neg_emb)
         neg_scores = torch.sum(neg_scores, dim=1)
@@ -135,21 +135,21 @@ class LightGCN(nn.Module):
         M2 = torch.mean(torch.pow(M_, 2)) - torch.tensor(1/float(self.latent_dim))
         attr_loss = M1 + F.softplus(M2)
 
-        # 损失函数 softplus(负-正)
+     
         loss = torch.mean(F.softplus(neg_scores - pos_scores))
 
         # print('loss',loss)
         # print('reg_loss',reg_loss)
 
         # return loss, reg_loss
-        '''修改'''
+        '''change'''
         return loss, reg_loss, attr_loss# * self.beta
 
 
 class PSR(LightGCN):
     def _init_weight(self):
         super(PSR, self)._init_weight()
-        self.socialGraph = self.dataset.getSocialGraph()  # user*user卷积核
+        self.socialGraph = self.dataset.getSocialGraph()
         # self.user2item = nn.Linear(self.latent_dim, self.latent_dim, bias=False)
         # self.item2user = nn.Linear(self.latent_dim, self.latent_dim, bias=False)
         # self.social_s = []
@@ -178,12 +178,12 @@ class PSR(LightGCN):
         items_emb = self.embedding_item.weight
         # social_emb = self.embedding_social.weight
         all_emb = torch.cat([users_emb, items_emb])
-        A = self.interactionGraph  # item * user 卷积核
-        S = self.socialGraph       # user * user 卷积核
+        A = self.interactionGraph  # item * user 
+        S = self.socialGraph       # user * user
         embs = [all_emb]
         # all_social = [social_emb]
         for layer in range(self.n_layers):
-            # # 1.对user-item网络中的嵌入进行更新
+            # # 1.
             # all_emb_interaction = torch.sparse.mm(A, all_emb)
             # users_emb_interaction, items_emb_next = torch.split(all_emb_interaction, [self.num_users, self.num_items])
             # # users_emb_next = torch.tanh(self.social_i[layer](users_emb_interaction))
@@ -191,19 +191,19 @@ class PSR(LightGCN):
             #
             # all_emb = torch.cat([users_emb_next, items_emb_next])
             #
-            # # 2.对user-user网络中的嵌入进行更新
+            # # 2.
             # users_emb_social = torch.sparse.mm(S, users_emb)
             # # users_emb = torch.tanh(self.social_u[layer](users_emb_social))
             # users_emb = torch.tanh(self.social_u(users_emb_social))
             #
-            # # 3.获得该层的输出嵌入(对嵌入拼接过权重)
-            # users = self.social_s(torch.cat([users_emb_next, users_emb],dim=1))  # 结果拼接
-            # # '''将拼接改为相加操作'''
-            # # users = self.social_c(users_emb_next + users_emb)  # 结果相加
+            # # 3.
+            # users = self.social_s(torch.cat([users_emb_next, users_emb],dim=1))
+            # #
+            # # users = self.social_c(users_emb_next + users_emb)
             #
             # users = users / users.norm(2)
             # embs.append(torch.cat([users, items_emb_next]))
-            '''消融实验'''
+            '''ablation'''
             # embedding from last layer
             users_emb, items_emb = torch.split(all_emb, [self.num_users, self.num_items])
             # social network propagation(user embedding)
