@@ -18,40 +18,40 @@ class BPRLoss:
         self.opt = optim.Adam(recmodel.parameters(), lr=self.lr)
 
     def stageOne(self, users, pos, neg):
-        # loss, reg_loss = self.model.bpr_loss(users, pos, neg)  # 返回损失：loss, E0^2
-        '''修改'''
-        loss, reg_loss, attr_loss = self.model.bpr_loss(users, pos, neg)  # 返回损失：loss, E0^2
+        # loss, reg_loss = self.model.bpr_loss(users, pos, neg) 
+        '''1'''
+        loss, reg_loss, attr_loss = self.model.bpr_loss(users, pos, neg)
         attr_loss = attr_loss * 5.0
         reg_loss = reg_loss * self.weight_decay
         loss = loss + reg_loss
         loss = loss + attr_loss
 
-        self.opt.zero_grad()  # 优化器梯度清零
-        loss.backward()       # 计算梯度
-        self.opt.step()       # 优化器反向传播
+        self.opt.zero_grad() 
+        loss.backward()      
+        self.opt.step()  
 
-        return loss.cpu().item()  # 返回损失值
+        return loss.cpu().item() 
 
 
 def UniformSample_original(users, dataset):
     total_start = time()
-    user_num = dataset.trainDataSize   # 训练集样本数
-    # 从所有样本中随机采样，得到训练集样本大小相同的user
+    user_num = dataset.trainDataSize  
+    # 
     users = np.random.randint(0, dataset.n_users, user_num)
-    allPos = dataset.allPos  # 训练集  所有用户的list [[用户0的items],[用户1的items],...]
+    allPos = dataset.allPos
     S = []
     sample_time1 = 0.
     sample_time2 = 0.
     for i, user in enumerate(users):
         start = time()
         posForUser = allPos[user]
-        if len(posForUser) == 0:   # 若再训练集中，某user没有好友，则不使用该user
+        if len(posForUser) == 0: 
             continue
         sample_time2 += time() - start
         posindex = np.random.randint(0, len(posForUser))
-        positem = posForUser[posindex]    # 随机获得训练集中user的一个正样本
+        positem = posForUser[posindex] 
         while True:
-            negitem = np.random.randint(0, dataset.m_items) # 随机获得训练集中user的一个负样本
+            negitem = np.random.randint(0, dataset.m_items)
             if negitem in posForUser:
                 continue
             else:
@@ -103,7 +103,7 @@ def shuffle(*arrays, **kwargs):
                          'the same length.')
 
     shuffle_indices = np.arange(len(arrays[0]))
-    np.random.shuffle(shuffle_indices) # 随机打乱顺序
+    np.random.shuffle(shuffle_indices)
 
     if len(arrays) == 1:
         result = arrays[0][shuffle_indices]
@@ -119,7 +119,7 @@ def shuffle(*arrays, **kwargs):
 # ====================Metrics==============================
 # =========================================================
 def RecallPrecision_ATk(test_data, r, k):
-    right_pred = r[:, :k].sum(1) # 求取每个user正确预测的item数(若多于20则取20)
+    right_pred = r[:, :k].sum(1)
     precis_n = k
     recall_n = np.array([len(test_data[i]) for i in range(len(test_data))])
     recall = np.sum(right_pred / recall_n)
@@ -163,13 +163,13 @@ def AUC(all_item_scores, dataset, test_data):
 
 def getLabel(test_data, pred_data):
     r = []
-    for i in range(len(test_data)):   # 遍历当前batch中的user i
-        groundTrue = test_data[i]     # 获得user i的真实items
-        predictTopK = pred_data[i]    # 获得user i的预测前20个items
-        pred = list(map(lambda x: x in groundTrue, predictTopK)) # 获得属于真实items的预测items列表
-        pred = np.array(pred).astype("float") # 将其转为float类型的numpy数组
+    for i in range(len(test_data)): 
+        groundTrue = test_data[i]  
+        predictTopK = pred_data[i]
+        pred = list(map(lambda x: x in groundTrue, predictTopK))
+        pred = np.array(pred).astype("float")
         r.append(pred)
-    return np.array(r).astype('float')# 返回当前batch中所有user的预测正确的item list
+    return np.array(r).astype('float')
 
 # ====================end Metrics=============================
 # =========================================================
