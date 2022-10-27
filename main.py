@@ -13,14 +13,14 @@ from register import dataset
 utils.set_seed(world.seed)
 print(">>SEED:", world.seed)
 # ==============================
-torch.autograd.set_detect_anomaly(True)     # 设置正向自动求导检测
+torch.autograd.set_detect_anomaly(True)     
 Recmodel = register.MODELS[world.model_name](world.config, dataset)
 Recmodel = Recmodel.to(world.device)
-bpr = utils.BPRLoss(Recmodel, world.config)  # 损失函数
+bpr = utils.BPRLoss(Recmodel, world.config)  
 
 weight_file = utils.getFileName()
 print(f"load and save to {weight_file}")
-if world.LOAD:    # 若存在预处理好的模型
+if world.LOAD:    
     try:
         Recmodel.load_state_dict(torch.load(weight_file, map_location=torch.device('cpu')))
         print(f"loaded model weights from {weight_file}")
@@ -77,7 +77,7 @@ try:
         loss = Procedure.BPR_train_original(dataset, Recmodel, bpr, epoch)
         print(f'[saved][BPR aver loss{loss:.3e}]')
     end = time.time()
-    print('所用的总时间为',(end - start) / 60)
+    print('The totoally time is',(end - start) / 60)
         # torch.save(Recmodel.state_dict(), weight_file)
 finally:
     print(f"best precision at 10:{best0_pre}")
@@ -94,7 +94,7 @@ finally:
     print(f"best ndcg at 20:{best1_ndcg_cold}")
     # beta = Recmodel.beta.detach().cpu().numpy()[0]
     # with open('result_ciao.txt', 'a+') as fn:
-    #     fn.write('将拼接操作改为相加'+' '+'21'+'\n')
+    #     fn.write('change concaternate to add'+' '+'21'+'\n')
     #     fn.write(str(best0_pre)+'\n')
     #     fn.write(str(best1_pre)+'\n')
     #     fn.write(str(best0_recall)+'\n')
