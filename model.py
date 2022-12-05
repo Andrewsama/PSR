@@ -142,7 +142,7 @@ class LightGCN(nn.Module):
         # print('reg_loss',reg_loss)
 
         # return loss, reg_loss
-        '''change'''
+        
         return loss, reg_loss, attr_loss# * self.beta
 
 
@@ -183,39 +183,34 @@ class PSR(LightGCN):
         embs = [all_emb]
         # all_social = [social_emb]
         for layer in range(self.n_layers):
-            # # 1.
-            # all_emb_interaction = torch.sparse.mm(A, all_emb)
-            # users_emb_interaction, items_emb_next = torch.split(all_emb_interaction, [self.num_users, self.num_items])
-            # # users_emb_next = torch.tanh(self.social_i[layer](users_emb_interaction))
-            # users_emb_next = torch.tanh(self.social_i(users_emb_interaction))
-            #
-            # all_emb = torch.cat([users_emb_next, items_emb_next])
-            #
-            # # 2.
-            # users_emb_social = torch.sparse.mm(S, users_emb)
-            # # users_emb = torch.tanh(self.social_u[layer](users_emb_social))
-            # users_emb = torch.tanh(self.social_u(users_emb_social))
-            #
-            # # 3.
-            # users = self.social_s(torch.cat([users_emb_next, users_emb],dim=1))
-            # #
-            # # users = self.social_c(users_emb_next + users_emb)
-            #
-            # users = users / users.norm(2)
-            # embs.append(torch.cat([users, items_emb_next]))
-            '''ablation'''
-            # embedding from last layer
-            users_emb, items_emb = torch.split(all_emb, [self.num_users, self.num_items])
-            # social network propagation(user embedding)
-            users_emb_social = torch.sparse.mm(S, users_emb)
-            # user-item bi-network propagation(user and item embedding)
+            # 1.
             all_emb_interaction = torch.sparse.mm(A, all_emb)
-            # get users_emb_interaction
             users_emb_interaction, items_emb_next = torch.split(all_emb_interaction, [self.num_users, self.num_items])
-            # graph fusion model
-            users_emb_next = self.Graph_Comb(users_emb_social, users_emb_interaction)
+            users_emb_next = torch.tanh(self.social_i(users_emb_interaction))
             all_emb = torch.cat([users_emb_next, items_emb_next])
-            embs.append(all_emb)
+
+            # 2.
+            users_emb_social = torch.sparse.mm(S, users_emb)
+            users_emb = torch.tanh(self.social_u(users_emb_social))
+
+            # 3.
+            users = self.social_s(torch.cat([users_emb_next, users_emb],dim=1))  # 结果拼接
+            users = users / users.norm(2)
+            embs.append(torch.cat([users, items_emb_next]))
+            
+#             '''ablation'''
+#             # embedding from last layer
+#             users_emb, items_emb = torch.split(all_emb, [self.num_users, self.num_items])
+#             # social network propagation(user embedding)
+#             users_emb_social = torch.sparse.mm(S, users_emb)
+#             # user-item bi-network propagation(user and item embedding)
+#             all_emb_interaction = torch.sparse.mm(A, all_emb)
+#             # get users_emb_interaction
+#             users_emb_interaction, items_emb_next = torch.split(all_emb_interaction, [self.num_users, self.num_items])
+#             # graph fusion model
+#             users_emb_next = self.Graph_Comb(users_emb_social, users_emb_interaction)
+#             all_emb = torch.cat([users_emb_next, items_emb_next])
+#             embs.append(all_emb)
         embs = torch.stack(embs, dim=1)
         final_embs = torch.mean(embs, dim=1)
         users, items = torch.split(final_embs, [self.num_users, self.num_items])
